@@ -9,6 +9,6 @@ database course design
 
 然后执行
 ```
-(venv) $ python hello.py shell
+(venv) $ python manage.py shell
 >>> db.create_all()
 ```
