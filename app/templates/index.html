@@ -5,6 +5,8 @@
     <title>Iceberg News</title>
 </head>
 <body>
-
+<div class="page-header">
+    <h1>Hello, {% if current_user.is_authenticated %}{{ current_user.username }}{% else %}Stranger{% endif %}!</h1>
+</div>
 </body>
 </html>

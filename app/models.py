@@ -1,6 +1,8 @@
 # coding=utf-8
 from . import db
 from sqlalchemy.orm import relationship
+from flask_login import UserMixin
+from . import lm
 
 article_tag = db.Table('a_t',
                        db.Column('article_id', db.Integer, db.ForeignKey('articles.article_id')),
@@ -58,13 +60,18 @@ class comment(db.Model):
     father = db.relationship('comments', uselist=False, remote_side=[comment_id], backref='sons')
 
 
-class user(db.Model):
+class user(UserMixin, db.Model):
     """用户表"""
     __tablename__ = 'users'
 
     user_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    user_name = db.Column(db.String(100), nullable=False)
+    user_name = db.Column(db.String(100), nullable=False, unique=True, index=True)
     user_key = db.Column(db.String(100), nullable=False)
     user_intro = db.Column(db.Text, nullable=True)
     user_credit = db.Column(db.Integer, nullable=False)
     comments = relationship('comments', backref='users')
+
+
+@lm.user_loader
+def load_user(user_id):
+    return user.query.get(int(user_id))

@@ -6,14 +6,14 @@ from wtforms import ValidationError
 from ..models import user
 
 
-class login_form(FlaskForm):
+class LoginForm(FlaskForm):
     username = StringField('用户名', validators=[InputRequired])
     password = PasswordField('密码', validators=[InputRequired])
     remember = BooleanField('记住我')
     submit = SubmitField('登录')
 
 
-class registry_form(FlaskForm):
+class RegistryForm(FlaskForm):
     username = StringField('用户名', validators=[InputRequired])
     password = PasswordField('密码', validators=[
         InputRequired, EqualTo('password2', message='两次输入需一致!'),])
