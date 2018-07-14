@@ -18,17 +18,17 @@ database course design
 
 + 从其他版本处
 
-执行
+  执行
 
-```
-(venv) $ python manage.py db upgrade
-```
+  ```
+  (venv) $ python manage.py db upgrade
+  ```
 
 + 在本地自行更新
 
-执行
+  执行
 
-```
-(venv) $ python manage.py db migrate
-(venv) $ python manage.py db upgrade
-```
+  ```
+  (venv) $ python manage.py db migrate
+  (venv) $ python manage.py db upgrade
+  ```
