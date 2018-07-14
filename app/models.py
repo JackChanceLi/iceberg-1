@@ -9,12 +9,12 @@ article_tag = db.Table('a_t',
                        db.Column('tag_id', db.Integer, db.ForeignKey('tags.tag_id')))  # tag到article有多对多关系
 
 
-class article(db.Model):
+class articles(db.Model):
     """新闻文章表"""
     __tablename__ = 'articles'
 
-    article_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    category_id = db.Column(db.Integer, db.ForeignKey('categories.category_id'))
+    article_id = db.Column(db.Integer, primary_key=True)
+    category_id = db.Column(db.Integer, nullable=False)
     article_title = db.Column(db.String(100), nullable=False, index=True)
     article_content = db.Column(db.Text, nullable=False)
     article_author = db.Column(db.String(100), nullable=False, index=True)
@@ -25,31 +25,22 @@ class article(db.Model):
     comments = relationship('comments', backref='articles')  # 与评论是一对多关系
 
 
-class tag(db.Model):
+class tags(db.Model):
     """标签表"""
     __tablename__ = 'tags'
 
-    tag_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    tag_id = db.Column(db.Integer, primary_key=True)
     article_id = db.Column(db.Integer, primary_key=True)
     articles = db.relationship('articles', secondary=article_tag,
                                backref=db.backref('tags', lazy='dynamic'),
                                lazy='dynamic')
 
 
-class category(db.Model):
-    """类别表"""
-    __tablename__ = 'categories'
-
-    category_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    article_id = db.Column(db.Integer, primary_key=True)
-    articles = relationship('articles', backref='categories')  # 与文章是一对多关系
-
-
-class comment(db.Model):
+class comments(db.Model):
     """评论表"""
     __tablename__ = 'comments'
 
-    comment_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    comment_id = db.Column(db.Integer, primary_key=True)
     article_id = db.Column(db.Integer, db.ForeignKey('articles.article_id'), primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.user_id'), nullable=False)
     comment_timestamp = db.Column(db.DateTime, nullable=False)
@@ -60,11 +51,11 @@ class comment(db.Model):
     father = db.relationship('comments', uselist=False, remote_side=[comment_id], backref='sons')
 
 
-class user(UserMixin, db.Model):
+class users(UserMixin, db.Model):
     """用户表"""
     __tablename__ = 'users'
 
-    user_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    user_id = db.Column(db.Integer, primary_key=True)
     user_name = db.Column(db.String(100), nullable=False, unique=True, index=True)
     user_key = db.Column(db.String(100), nullable=False)
     user_intro = db.Column(db.Text, nullable=True)
@@ -74,4 +65,4 @@ class user(UserMixin, db.Model):
 
 @lm.user_loader
 def load_user(user_id):
-    return user.query.get(int(user_id))
+    return users.query.get(int(user_id))

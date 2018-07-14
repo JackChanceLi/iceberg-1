@@ -3,7 +3,7 @@ from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, BooleanField, SubmitField
 from wtforms.validators import InputRequired, Optional, Length, Regexp, EqualTo
 from wtforms import ValidationError
-from ..models import user
+from ..models import users
 
 
 class LoginForm(FlaskForm):
@@ -21,5 +21,5 @@ class RegistryForm(FlaskForm):
     submit = SubmitField('注册')
 
     def validate_username(self, field):
-        if user.query.filter_by(username=field.data).first():
+        if users.query.filter_by(username=field.data).first():
             raise ValidationError('用户名已存在!')

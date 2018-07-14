@@ -4,7 +4,7 @@ from flask_login import login_user, logout_user, login_required, current_user
 from . import auth  # 导入蓝本auth
 from .. import db
 from .forms import *
-from ..models import user
+from ..models import *
 from werkzeug.utils import secure_filename
 
 
@@ -12,11 +12,11 @@ from werkzeug.utils import secure_filename
 def login():
     form = LoginForm()
     if form.validate_on_submit():
-        cur_user = user.query.filter_by(user_name=form.username.data).first()
+        cur_user = users.query.filter_by(user_name=form.username.data).first()
         if cur_user is not None and cur_user.user_key == form.password.data:
             login_user(cur_user, form.remember.data)
             return redirect(request.args.get('next') or url_for('main.index'))
-        flash('用户名或密码无效!')
+        # flash('用户名或密码无效!')
     return render_template('auth/login.html', form=form)
 
 
@@ -33,7 +33,7 @@ def register():
     form = RegistryForm()
     if form.validate_on_submit():
         # noinspection PyArgumentList
-        new_user = user(user_name=form.username.data,
+        new_user = users(user_name=form.username.data,
                         user_key=form.password.data,
                         user_credit=0)
         db.session.add(new_user)
