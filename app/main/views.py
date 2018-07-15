@@ -145,7 +145,7 @@ def delete_comment(article_id, comment_id):
     com = comments.query.filter_by(article_id=article_id, comment_id=comment_id).first()
     db.session.delete(com)
     db.session.commit()
-    return jsonify({'result': 1})
+    return jsonify({'result': 0})
 
 
 # 给评论点赞/点灭
@@ -159,7 +159,7 @@ def light_comment(article_id, comment_id, flag):
     com.comment_karma = com.comment_karma + flag
     db.session.add(com)
     db.session.commit()
-    return jsonify({'result': 1})
+    return jsonify({'result': 0})
 
 
 # 用户主页
@@ -204,4 +204,4 @@ def delete_user(user_id):
         db.session.delete(com)
     db.session.delete(q_user)
     db.session.commit()
-    return jsonify({'result': 1})
+    return jsonify({'result': 0})
