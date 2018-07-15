@@ -48,15 +48,15 @@ def reply_comment(article_id, reply_id):
         abort(400)
     comments_all = get_comments(article_id)
     single_comment = {
-        'article_id': article_id,                       # 文章id
+        'article_id': article_id,                           # 文章id
         'comment_id': comments_all[-1]['comment_id'] + 1,   # 评论id
-        'user_id': request.json['user_id'],             # 用户id
-        'comment_content': request.json['content'],     # 评论内容
-        'comment_timestamp': datetime.now(),            # 评论时间
-        'comment_karma': 0,                             # 点赞数量
-        'comment_mod_timestamp': datetime.now(),        # 最后修改时间
-        'is_reply': True,                               # 是否是评论的回复
-        'father_comment_id': reply_id,                  # 回复的评论的id
+        'user_id': request.json['user_id'],                 # 用户id
+        'comment_content': request.json['content'],         # 评论内容
+        'comment_timestamp': datetime.now(),                # 评论时间
+        'comment_karma': 0,                                 # 点赞数量
+        'comment_mod_timestamp': datetime.now(),            # 最后修改时间
+        'is_reply': True,                                   # 是否是评论的回复
+        'father_comment_id': reply_id,                      # 回复的评论的id
         # 回复的评论内容
         'father_comment_content': comments.query.filter_by(father_comment_id=reply_id).first().comment_content,
         # 回复的评论的用户名
@@ -86,13 +86,13 @@ def add_comment(article_id):
         abort(400)
     comments_all = get_comments(article_id)
     single_comment = {
-        'article_id': article_id,                       # 文章id
+        'article_id': article_id,                           # 文章id
         'comment_id': comments_all[-1]['comment_id'] + 1,   # 评论id
-        'user_id': request.json['user_id'],             # 用户id
-        'comment_content': request.json['content'],     # 评论内容
-        'comment_timestamp': datetime.now(),            # 评论时间
-        'comment_karma': 0,                             # 点赞数量
-        'comment_mod_timestamp': datetime.now(),        # 最后修改时间
+        'user_id': request.json['user_id'],                 # 用户id
+        'comment_content': request.json['content'],         # 评论内容
+        'comment_timestamp': datetime.now(),                # 评论时间
+        'comment_karma': 0,                                 # 点赞数量
+        'comment_mod_timestamp': datetime.now(),            # 最后修改时间
         'is_reply': False
     }
     new_comment = comments(comment_id=single_comment['comment_id'],
@@ -195,6 +195,7 @@ def show_user(user_id):
                     'comments': user_comments})
 
 
+# 删除用户，包括用户的评论也会全部删除
 @main.route('/user/<int:user_id>/delete', mathods=['GET'])
 def delete_user(user_id):
     q_user = users.query.filter_by(user_id=user_id).first()
@@ -204,8 +205,3 @@ def delete_user(user_id):
     db.session.delete(q_user)
     db.session.commit()
     return jsonify({'result': 1})
-
-                    
-
-
-
