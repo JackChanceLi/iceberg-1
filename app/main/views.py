@@ -1,9 +1,11 @@
 # coding=utf-8
+from __future__ import division
 from flask import Flask, render_template, redirect, url_for, request, flash, make_response, request, abort, jsonify
+from flask_login import current_user
 from . import main  # 导入蓝本main
 from .. import db
 from .forms import *
-from ..models import users, comments, articles
+from ..models import users, comments, articles, tags
 from werkzeug.utils import secure_filename
 from datetime import datetime
 
@@ -12,6 +14,156 @@ from datetime import datetime
 @main.errorhandler(404)
 def not_found(error):
     return make_response(jsonify({'error': 'Not found'}), 404)
+
+
+def get_articles(article_title=None, category_id=None, article_author=None, start_timestamp=None, tag=None):
+    global ret
+    articles_all = []
+    if article_title is not None:  # 按标题模糊查询
+        ret = articles.query.filter(articles.article_title.like('%'+article_title+'%')).all()
+    elif category_id is not None:  # 某一类的新闻
+        ret = articles.query.filter_by(category_id=category_id).all()
+    elif article_author is not None:  # 按作者查询
+        ret = articles.query.filter_by(article_author=article_author).all()
+    elif start_timestamp is not None:  # 按起始时间查询
+        ret = articles.query.filter(articles.article_timestamp >= start_timestamp).all()
+    elif tag is not None:  # 按标签搜索
+        atcl_ids = [x.article_id for x in tags.query.filter_by(tag_id=tag).all()]
+        for atcl_id in atcl_ids:
+            ret.append(articles.query.filter_by(article_id=atcl_id).first())
+    else:  # 所有新闻
+        ret = articles.query.all()
+    for atcl in ret:
+        single_article = {
+            'article_id': atcl.article_id,
+            'category_id': atcl.category_id,
+            'article_title': atcl.article_title,
+            'article_content': atcl.article_content,
+            'article_author': atcl.article_author,
+            'article_timestamp': atcl.article_timestamp,
+            'article_heat': atcl.article_heat,
+            'article_score': float(atcl.article_quality) / atcl.article_scoretimes,
+            'tag_list': list(tags.query.filter_by(article_id=atcl.article_id).all())
+        }
+        articles_all.append(single_article)
+    return articles_all
+
+
+# 新闻主页
+@main.route('/index', methods=['POST'])
+def index():
+    articles_all = get_articles()
+    return jsonify({'articles': articles_all})
+
+
+# 分类主页
+@main.route('/category/<int:category_id>', methods=['POST'])
+def category(category_id):
+    articles_all = get_articles(category_id=category_id)
+    return jsonify({'articles': articles_all})
+
+
+# 搜索
+@main.route('/search', methods=['GET', 'POST'])
+def search():
+    search_type = request.json['search_type']
+    keyword = request.json['keyword']
+    if search_type == 0:  # 按标题搜索
+        result = get_articles(article_title=keyword)
+        return jsonify({'articles': result})
+    elif search_type == 1:  # 标签
+        result = get_articles(tag=keyword)
+        return jsonify({'articles': result})
+    elif search_type == 2:  # 起始时间
+        result = get_articles(start_timestamp=keyword)
+        return jsonify({'articles': result})
+    elif search_type == 3:  # 按作者搜索
+        result = get_articles(article_author=keyword)
+        return jsonify({'articles': result})
+
+
+# 查看新闻
+@main.route('/article/<int:article_id>', methods=['GET', 'POST'])
+def browse_article(article_id):
+    comments = get_comments(article_id)
+    atcl = articles.query.filter_by(article_id=article_id).first()
+    atcl.article_heat += 1  # 热度 + 1
+    db.session.add(atcl)
+    db.session.commit()
+    single_article = {
+        'article_id': atcl.article_id,
+        'category_id': atcl.category_id,
+        'article_title': atcl.article_title,
+        'article_content': atcl.article_content,
+        'article_author': atcl.article_author,
+        'article_timestamp': atcl.article_timestamp,
+        'article_heat': atcl.article_heat,
+        'article_score': float(atcl.article_quality) / atcl.article_scoretimes,
+        'tag_list': list(tags.query.filter_by(article_id=atcl.article_id).all()),
+        'comment_list': comments
+    }
+    return jsonify({'article': single_article})
+
+
+# 添加新闻
+@main.route('/publish', methods=['GET', 'POST'])
+def publish():
+    new_article = articles(article_title=request.json['title'],
+                           category_id=request.json['category'],
+                           article_author=request.json['author'],
+                           article_content=request.json['content'],
+                           article_timestamp=request.json['time'],
+                           article_heat=0,
+                           article_quality=0,
+                           article_scoretimes=0)
+    db.session.add(new_article)
+    db.session.commit()
+    tag_list = request.json['tags']
+    for tag in tag_list:
+        new_tag_pair = tags(tag_id=tag, article_id=new_article.article_id)
+        db.session.add(new_tag_pair)
+    db.session.commit()
+    return jsonify({'result': 0})
+
+
+# 修改新闻
+@main.route('/article/<int:article_id>/edit', methods=['POST', 'GET'])
+def edit_article(article_id):
+    dat_article = articles.query.filter_by(article_id=article_id).first()
+    dat_article.article_title = request.json['title']
+    dat_article.category_id = request.json['category']
+    dat_article.article_author = request.json['author']
+    dat_article.article_content = request.json['content']
+    dat_article.article_timestamp=request.json['time']
+    db.session.add(dat_article)
+    db.session.commit()
+    new_tag_list = request.json['tags']
+    old_tag_list = list(tags.query.filter_by(article_id=article_id).all())
+    deleted_tags = list(set(old_tag_list).difference(set(new_tag_list)))
+    added_tags = list(set(new_tag_list).difference(set(old_tag_list)))
+    for tag in deleted_tags:
+        tag_atcl = tags.query.filter_by(tag_id=tag, article_id=article_id).first()
+        db.session.delete(tag_atcl)
+    for tag in added_tags:
+        tag_atcl = tags(tag_id=tag, article_id=article_id)
+        db.session.add(tag_atcl)
+    db.session.commit()
+    return jsonify({'result': 0})
+
+
+# 删除新闻
+@main.route('/article/<int:article_id>/delete', methods=['POST', 'GET'])
+def delete_article(article_id):
+    deleted_article = articles.query.filter_by(article_id=article_id).first()
+    deleted_tags = tags.query.filter_by(article_id=article_id).all()
+    deleted_comments = comments.query.filter_by(article_id=article_id).all()
+    for d_comment in delete_comment:
+        db.session.delete(d_comment)
+    for d_tag in deleted_tags:
+        db.session.delete(d_tag)
+    db.session.delete(delete_article)
+    db.session.commit()
+    return jsonify({'result': 0})
 
 
 # 获得全部的评论，返回一个列表
@@ -196,7 +348,7 @@ def show_user(user_id):
 
 
 # 删除用户，包括用户的评论也会全部删除
-@main.route('/user/<int:user_id>/delete', mathods=['GET'])
+@main.route('/user/<int:user_id>/delete', methods=['GET'])
 def delete_user(user_id):
     q_user = users.query.filter_by(user_id=user_id).first()
     q_comments = comments.query.filter_by(user_id=user_id).all()

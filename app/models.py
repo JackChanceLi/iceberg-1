@@ -60,6 +60,7 @@ class users(UserMixin, db.Model):
     user_key = db.Column(db.String(100), nullable=False)
     user_intro = db.Column(db.Text, nullable=True)
     user_credit = db.Column(db.Integer, nullable=False)
+    user_admin = db.Column(db.Boolean, nullable=False)
     comments = relationship('comments', backref='users')
 
 
