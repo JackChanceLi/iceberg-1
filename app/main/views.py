@@ -1,12 +1,9 @@
 # coding=utf-8
 from __future__ import division
-from flask import Flask, render_template, redirect, url_for, request, flash, make_response, request, abort, jsonify
-from flask_login import current_user
+from flask import make_response, request, abort, jsonify
 from . import main  # 导入蓝本main
 from .. import db
-from .forms import *
 from ..models import users, comments, articles, tags
-from werkzeug.utils import secure_filename
 from datetime import datetime
 
 
@@ -38,7 +35,7 @@ def get_articles(article_title=None, category_id=None, article_author=None, star
             'article_id': atcl.article_id,
             'category_id': atcl.category_id,
             'article_title': atcl.article_title,
-            'article_content': atcl.article_content,
+            'article_desc': atcl.article_desc,
             'article_author': atcl.article_author,
             'article_timestamp': atcl.article_timestamp,
             'article_heat': atcl.article_heat,
@@ -50,14 +47,14 @@ def get_articles(article_title=None, category_id=None, article_author=None, star
 
 
 # 新闻主页
-@main.route('/index', methods=['POST'])
+@main.route('/index', methods=['GET', 'POST'])
 def index():
     articles_all = get_articles()
     return jsonify({'articles': articles_all})
 
 
 # 分类主页
-@main.route('/category/<int:category_id>', methods=['POST'])
+@main.route('/category/<int:category_id>', methods=['GET', 'POST'])
 def category(category_id):
     articles_all = get_articles(category_id=category_id)
     return jsonify({'articles': articles_all})
@@ -85,9 +82,11 @@ def search():
 # 查看新闻
 @main.route('/article/<int:article_id>', methods=['GET', 'POST'])
 def browse_article(article_id):
-    comments = get_comments(article_id)
+    comment_list = get_comments(article_id)
     atcl = articles.query.filter_by(article_id=article_id).first()
     atcl.article_heat += 1  # 热度 + 1
+    if 'score' in request.json:
+        atcl.article_quality += request.json['score']
     db.session.add(atcl)
     db.session.commit()
     single_article = {
@@ -100,7 +99,7 @@ def browse_article(article_id):
         'article_heat': atcl.article_heat,
         'article_score': float(atcl.article_quality) / atcl.article_scoretimes,
         'tag_list': list(tags.query.filter_by(article_id=atcl.article_id).all()),
-        'comment_list': comments
+        'comment_list': comment_list
     }
     return jsonify({'article': single_article})
 
@@ -108,9 +107,11 @@ def browse_article(article_id):
 # 添加新闻
 @main.route('/publish', methods=['GET', 'POST'])
 def publish():
+    # if current_user.user_admin:
     new_article = articles(article_title=request.json['title'],
                            category_id=request.json['category'],
                            article_author=request.json['author'],
+                           article_desc=request.json['desc'],
                            article_content=request.json['content'],
                            article_timestamp=request.json['time'],
                            article_heat=0,
@@ -129,12 +130,14 @@ def publish():
 # 修改新闻
 @main.route('/article/<int:article_id>/edit', methods=['POST', 'GET'])
 def edit_article(article_id):
+    # if current_user.user_admin:
     dat_article = articles.query.filter_by(article_id=article_id).first()
     dat_article.article_title = request.json['title']
+    dat_article.article_desc = request.json['desc']
     dat_article.category_id = request.json['category']
     dat_article.article_author = request.json['author']
     dat_article.article_content = request.json['content']
-    dat_article.article_timestamp=request.json['time']
+    dat_article.article_timestamp = request.json['time']
     db.session.add(dat_article)
     db.session.commit()
     new_tag_list = request.json['tags']
@@ -154,14 +157,15 @@ def edit_article(article_id):
 # 删除新闻
 @main.route('/article/<int:article_id>/delete', methods=['POST', 'GET'])
 def delete_article(article_id):
+    # if current_user.user_admin:
     deleted_article = articles.query.filter_by(article_id=article_id).first()
     deleted_tags = tags.query.filter_by(article_id=article_id).all()
     deleted_comments = comments.query.filter_by(article_id=article_id).all()
-    for d_comment in delete_comment:
+    for d_comment in deleted_comments:
         db.session.delete(d_comment)
     for d_tag in deleted_tags:
         db.session.delete(d_tag)
-    db.session.delete(delete_article)
+    db.session.delete(deleted_article)
     db.session.commit()
     return jsonify({'result': 0})
 
@@ -171,10 +175,11 @@ def get_comments(article_id):
     comments_all = []
     ans = comments.query.filter_by(article_id=article_id).all()
     for com in ans:
+        user_name = users.query.filter_by(user_id=com.user_id).first().user_name
         single_comment = {
             'article_id': com.article_id,                  # 文章id
             'comment_id': com.comment_id,                  # 评论id
-            'user_id': com.user_id,                        # 用户id
+            'user_name': user_name,                        # 用户姓名
             'comment_content': com.comment_content,        # 评论内容
             'comment_timestamp': com.comment_timestamp,    # 评论时间
             'comment_karma': com.comment_karma,            # 点赞数量
@@ -199,10 +204,11 @@ def reply_comment(article_id, reply_id):
     if not request.json:
         abort(400)
     comments_all = get_comments(article_id)
+    user_name = users.query.filter_by(user_id=request.json['user_id']).first().user_name
     single_comment = {
         'article_id': article_id,                           # 文章id
         'comment_id': comments_all[-1]['comment_id'] + 1,   # 评论id
-        'user_id': request.json['user_id'],                 # 用户id
+        'user_name': user_name,                             # 用户姓名
         'comment_content': request.json['content'],         # 评论内容
         'comment_timestamp': datetime.now(),                # 评论时间
         'comment_karma': 0,                                 # 点赞数量
@@ -212,9 +218,9 @@ def reply_comment(article_id, reply_id):
         # 回复的评论内容
         'father_comment_content': comments.query.filter_by(father_comment_id=reply_id).first().comment_content,
         # 回复的评论的用户名
-        'father_comment_user': users.query.filter_by(user_id=
-                                                     comments.query.filter_by(
-                                                         father_comment_id=reply_id).first().user_id).first().user_name
+        'father_comment_user': users.query.filter_by(
+            user_id=comments.query.filter_by(
+                father_comment_id=reply_id).first().user_id).first().user_name
     }
     new_comment = comments(comment_id=single_comment['comment_id'],
                            article_id=article_id,
@@ -237,10 +243,11 @@ def add_comment(article_id):
     if not request.json:
         abort(400)
     comments_all = get_comments(article_id)
+    user_name = users.query.filter_by(user_id=request.json['user_id']).first().user_name
     single_comment = {
         'article_id': article_id,                           # 文章id
         'comment_id': comments_all[-1]['comment_id'] + 1,   # 评论id
-        'user_id': request.json['user_id'],                 # 用户id
+        'user_name': user_name,                             # 用户名
         'comment_content': request.json['content'],         # 评论内容
         'comment_timestamp': datetime.now(),                # 评论时间
         'comment_karma': 0,                                 # 点赞数量
@@ -267,10 +274,11 @@ def edit_comment(article_id, comment_id):
     if not request.json or 'content' not in request.json:
         abort(400)
     com = comments.query.filter_by(article_id=article_id, comment_id=comment_id).first()
+    user_name = users.query.filter_by(user_id=com.user_id).first().user_name
     single_comment = {
         'article_id': com.article_id,                           # 文章id
         'comment_id': com.comment_id,                           # 评论id
-        'user_id': com.user_id,                                 # 用户id
+        'user_name': user_name,                                 # 用户名
         'comment_content': request.json['content'],             # 评论内容
         'comment_timestamp': com.comment_timestamp,             # 评论时间
         'comment_karma': com.comment_karma,                     # 点赞数量ac
@@ -318,13 +326,14 @@ def light_comment(article_id, comment_id, flag):
 @main.route('/user/<int:user_id>', methods=['GET'])
 def show_user(user_id):
     q_user = users.query.filter_by(user_id=user_id).first()
-    user_comments=[]
+    user_comments = []
     q_comments = comments.query.filter_by(user_id=user_id).all()
     for com in q_comments:
+        user_name = users.query.filter_by(user_id=com.user_id).first().user_name
         single_comment = {
             'article_id': com.article_id,  # 文章id
             'comment_id': com.comment_id,  # 评论id
-            'user_id': com.user_id,  # 用户id
+            'user_name': user_name,  # 用户id
             'comment_content': com.comment_content,  # 评论内容
             'comment_timestamp': com.comment_timestamp,  # 评论时间
             'comment_karma': com.comment_karma,  # 点赞数量

@@ -16,6 +16,7 @@ class articles(db.Model):
     article_id = db.Column(db.Integer, primary_key=True)
     category_id = db.Column(db.Integer, nullable=False)
     article_title = db.Column(db.String(100), nullable=False, index=True)
+    article_desc = db.Column(db.Text, nullable=False)
     article_content = db.Column(db.Text, nullable=False)
     article_author = db.Column(db.String(100), nullable=False, index=True)
     article_timestamp = db.Column(db.DateTime, nullable=False, index=True)
@@ -47,6 +48,7 @@ class comments(db.Model):
     comment_content = db.Column(db.Text, nullable=False)
     comment_karma = db.Column(db.Integer, nullable=False)
     comment_mod_timestamp = db.Column(db.DateTime, nullable=True)
+    comment_report_sign = db.Column(db.Boolean, nullable=True)
     father_comment_id = db.Column(db.Integer, db.ForeignKey('comments.comment_id'), nullable=True)
     father = db.relationship('comments', uselist=False, remote_side=[comment_id], backref='sons')
 
