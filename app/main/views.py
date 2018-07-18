@@ -179,6 +179,7 @@ def get_comments(article_id):
         single_comment = {
             'article_id': com.article_id,                  # 文章id
             'comment_id': com.comment_id,                  # 评论id
+            'user_id': com.user_id,                        # 用户id
             'user_name': user_name,                        # 用户姓名
             'comment_content': com.comment_content,        # 评论内容
             'comment_timestamp': com.comment_timestamp,    # 评论时间

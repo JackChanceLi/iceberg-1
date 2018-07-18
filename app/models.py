@@ -6,7 +6,7 @@ from . import lm
 
 article_tag = db.Table('a_t',
                        db.Column('article_id', db.Integer, db.ForeignKey('articles.article_id')),
-                       db.Column('tag_id', db.Integer, db.ForeignKey('tags.tag_id')))  # tag到article有多对多关系
+                       db.Column('tag_id', db.Integer, db.ForeignKey('tags.tag_id')))  # tags到articles有多对多关系
 
 
 class articles(db.Model):
@@ -37,6 +37,12 @@ class tags(db.Model):
                                lazy='dynamic')
 
 
+comment_user = db.Table('c_u',
+                        db.Column('comment_id', db.Integer, db.ForeignKey('comments.comment_id')),
+                        db.Column('article_id', db.Integer, db.ForeignKey('comments.article_id')),
+                        db.Column('user_id', db.Integer, db.ForeignKey('users.user_id')))  # comments到users有多对多的点赞关系
+
+
 class comments(db.Model):
     """评论表"""
     __tablename__ = 'comments'
@@ -51,6 +57,9 @@ class comments(db.Model):
     comment_report_sign = db.Column(db.Boolean, nullable=True)
     father_comment_id = db.Column(db.Integer, db.ForeignKey('comments.comment_id'), nullable=True)
     father = db.relationship('comments', uselist=False, remote_side=[comment_id], backref='sons')
+    starred_users = db.relationship('users', secondary=comment_user,
+                                    backref=db.backref('starred_comments', lazy='dynamic'),
+                                    lazy='dynamic')
 
 
 class users(UserMixin, db.Model):
