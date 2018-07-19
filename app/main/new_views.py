@@ -73,68 +73,48 @@ def ruko():
         if 'action' in json:
             action = json['action']
             if action == 'login':
-                login(request)
+                return login(request)
             elif action == 'register':
-                register(request)
+                return register(request)
             elif action == 'index':
-                index(request)
+                return index(request)
             elif action == 'category':
                 category_id = json['category_id']
-                category(request, category_id)
+                return category(request, category_id)
             elif action == 'search':
-                search(request)
+                return search(request)
             elif action == 'browse_article':
                 article_id = json['article_id']
-                browse_article(request, article_id)
+                return browse_article(request, article_id)
             elif action == 'publish':
-                publish()
+                return publish()
             elif action == 'edit_article':
                 article_id = json['article_id']
-                edit_article(request, article_id)
+                return edit_article(request, article_id)
             elif action == 'delete_article':
                 article_id = json['article_id']
-                delete_article(request, article_id)
+                return delete_article(request, article_id)
             elif action == 'reply_comment':
-                reply_comment(request, request.json['article_id'], request.json['reply_id'])
+                return reply_comment(request, request.json['article_id'], request.json['reply_id'])
             elif action == 'add_comment':
-                add_comment(request, request.json['article_id'])
+                return add_comment(request, request.json['article_id'])
             elif action == 'edit_comment':
-                edit_comment(request, request.json['article_id'], request.json['comment_id'])
+                return edit_comment(request, request.json['article_id'], request.json['comment_id'])
             elif action == 'delete_comment':
-                delete_comment(request, request.json['article_id'], request.json['comment_id'])
+                return delete_comment(request, request.json['article_id'], request.json['comment_id'])
             elif action == 'admin_delete_comment':
-                admin_delete_comment(request, request.json['article_id'],
-                                     request.json['user_id'], request.json['comment_id'], 0)
+                return admin_delete_comment(request, request.json['article_id'],
+                                            request.json['user_id'], request.json['comment_id'], 0)
             elif action == 'report_comment':
-                report_comment(request, request.json['article_id'], request.json['comment_id'])
+                return report_comment(request, request.json['article_id'], request.json['comment_id'])
             elif action == 'get_users':
-                get_users(request)
+                return get_users(request)
             elif action == 'show_user':
-                show_user(request, request.json['user_id'])
+                return show_user(request, request.json['user_id'])
             elif action == 'delete_user':
-                delete_user(request, request.json['user_id'])
+                return delete_user(request, request.json['user_id'])
 
     return render_template('index.html')
-
-    # if request.method == 'POST':
-    #     username = request.json['name']
-    #     password = request.json['password']
-    #     cur_user = users.query.filter_by(user_name=username).first()
-    #     if cur_user is None:
-    #         return jsonify({'result': 2})  # 用户名不存在
-    #     elif cur_user.user_key != password:
-    #         return jsonify({'result': 1})
-    #     else:
-    #         # login_user(cur_user)
-    #         cu = {
-    #             'user_id': cur_user.user_id,
-    #             'user_name': cur_user.user_name,
-    #             'user_password': cur_user.user_key,
-    #             'user_intro': cur_user.user_intro,
-    #             'user_credit': cur_user.user_credit,
-    #             'user_admin': cur_user.user_admin
-    #         }
-    #         return jsonify({'result': 0, 'user': cu})
 
 
 def login(request):
