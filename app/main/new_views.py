@@ -206,6 +206,11 @@ def browse_article(request, article_id):
         if 'score' in request.json:
             atcl.article_quality += request.json['score']
             atcl.article_scoretimes += 1
+            # 用户评分增加信誉度
+            usr = users.query.filter_by(user_id=request.json['user_id']).first()
+            usr.user_credit = usr.user_credit + 1
+            db.session.add(usr)
+            db.session.commit()
     db.session.add(atcl)
     db.session.commit()
     tag_ids = [x.tag_id for x in article_tag.query.filter_by(article_id=atcl.article_id).all()]
@@ -531,7 +536,7 @@ def delete_comment(request, article_id, comment_id):
 def admin_delete_comment(request, article_id, comment_id):
     com = comments.query.filter_by(article_id=article_id, comment_id=comment_id).first()
     usr = users.query.filter_by(user_id=com.user_id).first()
-    usr.user_credit = usr.user_credit - 1
+    usr.user_credit = usr.user_credit - 5
     db.session.add(usr)
     db.session.delete(com)
     usrs = comment_user.query.filter_by(article_id=article_id, comment_id=comment_id).all()
@@ -551,6 +556,8 @@ def light_comment(request, article_id, user_id, comment_id, flag):
     com = comments.query.filter_by(article_id=article_id, comment_id=comment_id).first()
     user = users.query.filter_by(user_id=user_id).first()
     com.comment_karma = com.comment_karma + flag
+    if com.comment_karma == 10:
+        user.user_credit += 1
     light = comment_user(comment_id=comment_id, article_id=article_id, user_id=user_id)
     db.session.add(light)
     db.session.add(user)
