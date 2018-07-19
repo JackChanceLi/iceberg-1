@@ -40,10 +40,21 @@ class tags(db.Model):
     tag_name = db.Column(db.String(100), unique=True)
 
 
-comment_user = db.Table('c_u',
-                        db.Column('comment_id', db.Integer, db.ForeignKey('comments.comment_id')),
-                        db.Column('article_id', db.Integer, db.ForeignKey('comments.article_id')),
-                        db.Column('user_id', db.Integer, db.ForeignKey('users.user_id')))  # comments到users有多对多的点赞关系
+# comment_user = db.Table('c_u',
+#                         db.Column('user_id', db.Integer, db.ForeignKey('users.user_id')),
+#                         db.Column('comment_id', db.Integer),
+#                         db.Column('article_id', db.Integer),
+#                         ForeignKeyConstraint(
+#                             ('comment_id', 'article_id'),
+#                             ('comments.comment_id', 'articles.article_id')
+#                         ))  # comments到users有多对多的点赞关系
+
+
+class comment_user(db.Model):
+    """comments到users有多对多的点赞关系"""
+    comment_id = db.Column(db.Integer, db.ForeignKey('comments.comment_id'), primary_key=True)
+    article_id = db.Column(db.Integer, db.ForeignKey('comments.article_id'), primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.user_id'), primary_key=True)
 
 
 class comments(db.Model):
@@ -60,9 +71,9 @@ class comments(db.Model):
     comment_report_sign = db.Column(db.Boolean, nullable=True)
     father_comment_id = db.Column(db.Integer, db.ForeignKey('comments.comment_id'), nullable=True)
     father = db.relationship('comments', uselist=False, remote_side=[comment_id], backref='sons')
-    starred_users = db.relationship('users', secondary=comment_user,
-                                    backref=db.backref('starred_comments', lazy='dynamic'),
-                                    lazy='dynamic')
+    # starred_users = db.relationship('users', secondary=comment_user,
+    #                                 backref=db.backref('starred_comments', lazy='dynamic'),
+    #                                 lazy='dynamic')
 
 
 class users(db.Model):
