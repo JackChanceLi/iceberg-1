@@ -10,7 +10,7 @@ from . import lm
 
 
 class article_tag(db.Model):
-    __tablename__ = 'article_name'
+    __tablename__ = 'article_tag'
     article_id = db.Column(db.Integer, db.ForeignKey('articles.article_id'), primary_key=True)
     tag_id = db.Column(db.Integer, db.ForeignKey('tags.tag_id'), primary_key=True)
 

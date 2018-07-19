@@ -14,16 +14,16 @@ class Config:
 
 class DevelopmentConfig(Config):
     DEBUG = True
-    SQLALCHEMY_DATABASE_URI = 'mysql+pymysql://root:qu97t23!@127.0.0.1:3306/dev?charset=utf8'
+    SQLALCHEMY_DATABASE_URI = 'mysql+pymysql://root:qu97t23!@127.0.0.1:3306/dev'
 
 
 class TestingConfig(Config):
     TESTING = True
-    SQLALCHEMY_DATABASE_URI = 'mysql+pymysql://root:qu97t23!@127.0.0.1:3306/test?charset=utf8'
+    SQLALCHEMY_DATABASE_URI = 'mysql+pymysql://root:qu97t23!@127.0.0.1:3306/test'
 
 
 class ProductionConfig(Config):
-    SQLALCHEMY_DATABASE_URI = 'mysql+pymysql://root:qu97t23!@127.0.0.1:3306/prd?charset=utf8'
+    SQLALCHEMY_DATABASE_URI = 'mysql+pymysql://root:qu97t23!@127.0.0.1:3306/prd'
 
 
 config = {
