@@ -1,6 +1,7 @@
 # coding=utf-8
 from flask import Blueprint
 
-main = Blueprint('main', __name__)  # 创建蓝本
+main = Blueprint('main', __name__, template_folder='../templates', static_folder='../static')  # 创建蓝本
 
-from . import views
+from . import new_views
+

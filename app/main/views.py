@@ -1,6 +1,6 @@
 # coding=utf-8
 from __future__ import division
-from flask import make_response, request, abort, jsonify
+from flask import make_response, request, abort, jsonify, render_template
 from sqlalchemy import desc
 from . import main  # 导入蓝本main
 from .. import db
@@ -107,6 +107,11 @@ def register():
             db.session.add(new_user)
             db.session.commit()
             return jsonify({'result': 0})
+
+
+@main.route('/')
+def rukou():
+    return render_template('index.html')
 
 
 # 新闻主页
