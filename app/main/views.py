@@ -1,6 +1,7 @@
 # coding=utf-8
 from __future__ import division
 from flask import make_response, request, abort, jsonify
+from sqlalchemy import desc
 from . import main  # 导入蓝本main
 from .. import db
 from ..models import users, comments, articles, tags, comment_user, article_tag
@@ -15,7 +16,7 @@ def not_found(error):
 
 
 def get_articles(article_title=None, category_id=None, article_author=None, start_timestamp=None, tag=None):
-    global ret
+    ret = []
     articles_all = []
     if article_title is not None:  # 按标题模糊查询
         ret = articles.query.filter(articles.article_title.like('%'+article_title+'%')).all()
@@ -39,7 +40,10 @@ def get_articles(article_title=None, category_id=None, article_author=None, star
     if ret is None:
         return
     for atcl in ret:
-        tag_ids = [x.tag_id for x in article_tag.query.filter_by(article_id=atcl.article_id).all()]
+        tags_all = article_tag.query.filter_by(article_id=atcl.article_id).all()
+        tag_ids = []
+        for tag in tags_all:
+            tag_ids.append(tag.tag_id)
         tag_list = []
         for tag_id in tag_ids:
             tag_list.append(tags.query.filter_by(tag_id=tag_id).first().tag_name)
@@ -101,9 +105,10 @@ def browse_article(article_id):
     comment_list = get_comments(article_id)
     atcl = articles.query.filter_by(article_id=article_id).first()
     atcl.article_heat += 1  # 热度 + 1
-    if 'score' in request.json:
-        atcl.article_quality += request.json['score']
-        atcl.article_scoretimes += 1
+    if request.json:
+        if 'score' in request.json:
+            atcl.article_quality += request.json['score']
+            atcl.article_scoretimes += 1
     db.session.add(atcl)
     db.session.commit()
     tag_ids = [x.tag_id for x in article_tag.query.filter_by(article_id=atcl.article_id).all()]
@@ -145,15 +150,19 @@ def publish():
                            article_scoretimes=0)
     db.session.add(new_article)
     db.session.commit()
-    article_id = articles.query.filter_by(article_title=request.json['title']).first()
+    article = articles.query.filter_by(article_title=request.json['title']).first()
+    if article is None:
+        return jsonify({'result': 1})
+
     tag_list = request.json['tags']
     for tag in tag_list:
         if tags.query.filter_by(tag_name=tag).first() is None:
-            new_tag = tags(tag_name=tag)
+            last_tag_id = tags.query.order_by(desc(tags.tag_id)).first().tag_id
+            new_tag = tags(tag_id=last_tag_id+1, tag_name=tag)
             db.session.add(new_tag)
             db.session.commit()
         tag_id = tags.query.filter_by(tag_name=tag).first().tag_id
-        new_article_tag_pair = article_tag(article_id=article_id, tag_id=tag_id)
+        new_article_tag_pair = article_tag(article_id=article.article_id, tag_id=tag_id)
         db.session.add(new_article_tag_pair)
         db.session.commit()
     return jsonify({'result': 0})
@@ -164,11 +173,14 @@ def publish():
 def edit_article(article_id):
     # if current_user.user_admin:
     dat_article = articles.query.filter_by(article_id=article_id).first()
-    dat_article.article_title = request.json['title']
-    dat_article.article_desc = request.json['desc']
+    if 'title' in request.json:
+        dat_article.article_title = request.json['title']
+    if 'desc' in request.json:
+        dat_article.article_desc = request.json['desc']
     # dat_article.category_id = request.json['category']
     # dat_article.article_author = request.json['author']
-    dat_article.article_content = request.json['content']
+    if 'content' in request.json:
+        dat_article.article_content = request.json['content']
     # dat_article.article_timestamp = request.json['time']
     db.session.add(dat_article)
     db.session.commit()

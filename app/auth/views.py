@@ -19,7 +19,7 @@ def login():
         elif cur_user.user_key != password:
             return jsonify({'result': 1})
         else:
-            login_user(cur_user)
+            # login_user(cur_user)
             cu = {
                 'user_id': cur_user.user_id,
                 'user_name': cur_user.user_name,
@@ -34,7 +34,8 @@ def login():
 @auth.route('/logout')
 @login_required
 def logout():
-    logout_user()
+    pass
+    # logout_user()
 
 
 @auth.route('/register', methods=['GET', 'POST'])
@@ -45,11 +46,11 @@ def register():
         if users.query.filter_by(user_name=username).first():
             return jsonify({'result': 1})
         else:
-            last_id = users.query.order_by(desc(users.user_id)).first()
-            new_user = users(user_id=last_id + 1,
+            last_user = users.query.order_by(desc(users.user_id)).first()
+            new_user = users(user_id=last_user.user_id + 1,
                              user_name=username,
                              user_key=password,
-                             user_intro='这里空空如也',
+                             user_intro='Nothing to be found here.',
                              user_credit=0,
                              user_admin=False)
             db.session.add(new_user)
