@@ -243,7 +243,7 @@ def get_usr(user_id):
 
 # 获得某一个评论的点赞用户列表
 def get_endorse_use(comment_id):
-    ans = comment_user.query.query.filter_by(comment_id=comment_id)
+    ans = comment_user.query.filter_by(comment_id=comment_id)
     usr = []
     for com in ans:
         user_info, _ = get_usr(com.user_id)
@@ -287,15 +287,17 @@ def reply_comment(article_id, reply_id):
     if not request.json:
         abort(400)
     credit = users.query.filter_by(user_id=request.json['user_id']).first().user_credit
+    comments_all = get_comments(article_id)
+    sorted_comments = sorted(comments_all, key=lambda x: (-x['comment_karma'], x['comment_timestamp']))
     # 信誉度低无法评论
     if credit < 0:
-        return jsonify({'result: 1'})
-    comments_all = get_comments(article_id)
+        return jsonify({'result': 0, 'comments': sorted_comments})
     user_name = users.query.filter_by(user_id=request.json['user_id']).first().user_name
     single_comment = {
         'article_id': article_id,                           # 文章id
         # 'comment_id': comments_all[-1]['comment_id'] + 1,   # 评论id
         'starred_user': [],  # 点赞用户列表
+        "user_id": request.json['user_id'],                  # 用户id
         'user_name': user_name,                             # 用户姓名
         'comment_content': request.json['content'],         # 评论内容
         'comment_timestamp': datetime.now(),                # 评论时间
@@ -304,11 +306,11 @@ def reply_comment(article_id, reply_id):
         'is_reply': True,                                   # 是否是评论的回复
         'father_comment_id': reply_id,                      # 回复的评论的id
         # 回复的评论内容
-        'father_comment_content': comments.query.filter_by(father_comment_id=reply_id).first().comment_content,
+        'father_comment_content': comments.query.filter_by(comment_id=reply_id).first().comment_content,
         # 回复的评论的用户名
         'father_comment_user': users.query.filter_by(
             user_id=comments.query.filter_by(
-                father_comment_id=reply_id).first().user_id).first().user_name
+                comment_id=reply_id).first().user_id).first().user_name
     }
     if len(comments_all) == 0:
         single_comment['comment_id'] = 1
@@ -335,14 +337,16 @@ def add_comment(article_id):
     if not request.json:
         abort(400)
     credit = users.query.filter_by(user_id=request.json['user_id']).first().user_credit
+    comments_all = get_comments(article_id)
+    sorted_comments = sorted(comments_all, key=lambda x: (-x['comment_karma'], x['comment_timestamp']))
     # 信誉度低无法评论
     if credit < 0:
-        return jsonify({'result: 1'})
-    comments_all = get_comments(article_id)
+        return jsonify({'result': 0, 'comments': sorted_comments})
     user_name = users.query.filter_by(user_id=request.json['user_id']).first().user_name
     single_comment = {
         'article_id': article_id,                           # 文章id
         # 'comment_id': comments_all[-1]['comment_id'] + 1,   # 评论id
+        'user_id': request.json['user_id'],                 # 用户id
         'starred_user': [],                                 # 点赞用户列表
         'user_name': user_name,                             # 用户名
         'comment_content': request.json['content'],         # 评论内容
@@ -417,8 +421,7 @@ def delete_comment(article_id, comment_id):
 @main.route('/admin/article/<int:article_id>/<int:comment_id>/delete', methods=['GET'])
 def admin_delete_comment(article_id, comment_id):
     com = comments.query.filter_by(article_id=article_id, comment_id=comment_id).first()
-    usr = users.query.filter_by(user_id=comments.query.filter_by(
-                    father_comment_id=com.father_comment_id).first().user_id).first()
+    usr = users.query.filter_by(user_id=com.user_id).first()
     usr.user_credit = usr.user_credit - 1
     db.session.add(usr)
     db.session.delete(com)
@@ -439,7 +442,7 @@ def light_comment(article_id, user_id, comment_id, flag):
     com = comments.query.filter_by(article_id=article_id, comment_id=comment_id).first()
     user = users.query.filter_by(user_id=user_id).first()
     com.comment_karma = com.comment_karma + flag
-    light = comment_user(comment_id, article_id, user_id)
+    light = comment_user(comment_id=comment_id, article_id=article_id, user_id=user_id)
     db.session.add(light)
     db.session.add(user)
     db.session.add(com)
@@ -492,17 +495,24 @@ def get_report_comments():
 @main.route('/admin/manage_user', methods=['GET'])
 def get_users():
     all_user = users.query.all()
-    usrs = []
+    all_users = []
     for usr in all_user:
-        usrs.append(get_usr(usr.user_id))
-    return jsonify({'users': usrs})
+        q_user = {
+            'user_id': usr.user_id,
+            'name': usr.user_name,
+            'intro': usr.user_intro,
+            'credit': usr.user_credit
+        }
+        all_users.append(q_user)
+    return jsonify({'users': all_users})
 
 
 # 用户主页
 @main.route('/user/<int:user_id>', methods=['GET'])
 def show_user(user_id):
     q_user, user_comments = get_usr(user_id)
-    return jsonify({'name': q_user.user_name,
+    return jsonify({'user_id': q_user.user_id,
+                    'name': q_user.user_name,
                     'intro': q_user.user_intro,
                     'credit': q_user.user_credit,
                     'comments': user_comments})
@@ -516,7 +526,8 @@ def change_credit():
             usr.user_credit += 1
             db.session.add(usr)
     db.session.commit()
-    t = Timer(20, change_credit)
+    t = Timer(1, change_credit)
+    print "running"
     t.start()
 
 
