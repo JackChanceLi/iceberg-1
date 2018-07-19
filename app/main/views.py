@@ -3,7 +3,7 @@ from __future__ import division
 from flask import make_response, request, abort, jsonify
 from . import main  # 导入蓝本main
 from .. import db
-from ..models import users, comments, articles, tags
+from ..models import users, comments, articles, tags, article_tag
 from datetime import datetime
 
 
@@ -25,12 +25,17 @@ def get_articles(article_title=None, category_id=None, article_author=None, star
     elif start_timestamp is not None:  # 按起始时间查询
         ret = articles.query.filter(articles.article_timestamp >= start_timestamp).all()
     elif tag is not None:  # 按标签搜索
-        atcl_ids = [x.article_id for x in tags.query.filter_by(tag_id=tag).all()]
+        tag_id = tags.query.filter_by(tag_name=tag).first().tag_id
+        atcl_ids = [x.article_id for x in article_tag.query.filter_by(tag_id=tag_id).all()]
         for atcl_id in atcl_ids:
             ret.append(articles.query.filter_by(article_id=atcl_id).first())
     else:  # 所有新闻
         ret = articles.query.all()
     for atcl in ret:
+        tag_ids = [x.tag_id for x in article_tag.query.filter_by(article_id=atcl.article_id).all()]
+        tag_list = []
+        for tag_id in tag_ids:
+            tag_list.append(tags.query.filter_by(tag_id=tag_id).first().tag_name)
         single_article = {
             'article_id': atcl.article_id,
             'category_id': atcl.category_id,
@@ -40,7 +45,7 @@ def get_articles(article_title=None, category_id=None, article_author=None, star
             'article_timestamp': atcl.article_timestamp,
             'article_heat': atcl.article_heat,
             'article_score': float(atcl.article_quality) / atcl.article_scoretimes,
-            'tag_list': list(tags.query.filter_by(article_id=atcl.article_id).all())
+            'tag_list': tag_list
         }
         articles_all.append(single_article)
     return articles_all
@@ -89,16 +94,21 @@ def browse_article(article_id):
         atcl.article_quality += request.json['score']
     db.session.add(atcl)
     db.session.commit()
+    tag_ids = [x.tag_id for x in article_tag.query.filter_by(article_id=atcl.article_id).all()]
+    tag_list = []
+    for tag_id in tag_ids:
+        tag_list.append(tags.query.filter_by(tag_id=tag_id).first().tag_name)
     single_article = {
         'article_id': atcl.article_id,
         'category_id': atcl.category_id,
         'article_title': atcl.article_title,
+        'article_desc': atcl.article_desc,
         'article_content': atcl.article_content,
         'article_author': atcl.article_author,
         'article_timestamp': atcl.article_timestamp,
         'article_heat': atcl.article_heat,
         'article_score': float(atcl.article_quality) / atcl.article_scoretimes,
-        'tag_list': list(tags.query.filter_by(article_id=atcl.article_id).all()),
+        'tag_list': tag_list,
         'comment_list': comment_list
     }
     return jsonify({'article': single_article})
@@ -119,11 +129,17 @@ def publish():
                            article_scoretimes=0)
     db.session.add(new_article)
     db.session.commit()
+    article_id = articles.query.filter_by(article_title=request.json['title']).first()
     tag_list = request.json['tags']
     for tag in tag_list:
-        new_tag_pair = tags(tag_id=tag, article_id=new_article.article_id)
-        db.session.add(new_tag_pair)
-    db.session.commit()
+        if tags.query.filter_by(tag_name=tag).first() is None:
+            new_tag = tags(tag_name=tag)
+            db.session.add(new_tag)
+            db.session.commit()
+        tag_id = tags.query.filter_by(tag_name=tag).first().tag_id
+        new_article_tag_pair = article_tag(article_id=article_id, tag_id=tag_id)
+        db.session.add(new_article_tag_pair)
+        db.session.commit()
     return jsonify({'result': 0})
 
 
@@ -134,37 +150,47 @@ def edit_article(article_id):
     dat_article = articles.query.filter_by(article_id=article_id).first()
     dat_article.article_title = request.json['title']
     dat_article.article_desc = request.json['desc']
-    dat_article.category_id = request.json['category']
-    dat_article.article_author = request.json['author']
+    # dat_article.category_id = request.json['category']
+    # dat_article.article_author = request.json['author']
     dat_article.article_content = request.json['content']
-    dat_article.article_timestamp = request.json['time']
+    # dat_article.article_timestamp = request.json['time']
     db.session.add(dat_article)
     db.session.commit()
-    new_tag_list = request.json['tags']
-    old_tag_list = list(tags.query.filter_by(article_id=article_id).all())
-    deleted_tags = list(set(old_tag_list).difference(set(new_tag_list)))
-    added_tags = list(set(new_tag_list).difference(set(old_tag_list)))
-    for tag in deleted_tags:
-        tag_atcl = tags.query.filter_by(tag_id=tag, article_id=article_id).first()
-        db.session.delete(tag_atcl)
-    for tag in added_tags:
-        tag_atcl = tags(tag_id=tag, article_id=article_id)
-        db.session.add(tag_atcl)
-    db.session.commit()
+    # new_tag_list = request.json['tags']
+    # old_tag_id_list = article_tag.query.filter_by(article_id=article_id).all()
+    # old_tag_list = []
+    # for old_tag_id in old_tag_id_list:
+    #     old_tag_list.append(tags.query.filter_by(tag_id=old_tag_id).first().tag_name)
+    # deleted_tags = list(set(old_tag_list).difference(set(new_tag_list)))
+    # added_tags = list(set(new_tag_list).difference(set(old_tag_list)))
+    # for tag in deleted_tags:
+    #     tag_id = tags.query.filter_by(tag_name=tag).first().tag_id
+    #     for deleted_pair in article_tag.query.filter_by(tag_id=tag_id).all():
+    #         db.session.delete(deleted_pair)
+    # db.session.commit()
+    # for tag in added_tags:
+    #     if tags.query.filter_by(tag_name=tag).first() is None:
+    #         new_tag = tags(tag_name=tag)
+    #         db.session.add(new_tag)
+    #         db.session.commit()
+    #     tag_id = tags.query.filter_by(tag_name=tag).first().tag_id
+    #     new_article_tag_pair = article_tag(article_id=article_id, tag_id=tag_id)
+    #     db.session.add(new_article_tag_pair)
+    # db.session.commit()
     return jsonify({'result': 0})
 
 
 # 删除新闻
 @main.route('/article/<int:article_id>/delete', methods=['POST', 'GET'])
 def delete_article(article_id):
-    # if current_user.user_admin:
     deleted_article = articles.query.filter_by(article_id=article_id).first()
-    deleted_tags = tags.query.filter_by(article_id=article_id).all()
     deleted_comments = comments.query.filter_by(article_id=article_id).all()
+    deleted_pairs = article_tag.query.filter_by(article_id=article_id).all()
+
     for d_comment in deleted_comments:
         db.session.delete(d_comment)
-    for d_tag in deleted_tags:
-        db.session.delete(d_tag)
+    for deleted_pair in deleted_pairs:
+        db.session.delete(deleted_pair)
     db.session.delete(deleted_article)
     db.session.commit()
     return jsonify({'result': 0})

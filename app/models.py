@@ -4,9 +4,15 @@ from sqlalchemy.orm import relationship
 from flask_login import UserMixin
 from . import lm
 
-article_tag = db.Table('a_t',
-                       db.Column('article_id', db.Integer, db.ForeignKey('articles.article_id')),
-                       db.Column('tag_id', db.Integer, db.ForeignKey('tags.tag_id')))  # tags到articles有多对多关系
+# article_tag = db.Table('a_t',
+#                        db.Column('article_id', db.Integer, db.ForeignKey('articles.article_id')),
+#                        db.Column('tag_id', db.Integer, db.ForeignKey('tags.tag_id')))  # tags到articles有多对多关系
+
+
+class article_tag(db.Model):
+    __tablename__ = 'article_name'
+    article_id = db.Column(db.Integer, db.ForeignKey('articles.article_id'), primary_key=True)
+    tag_id = db.Column(db.Integer, db.ForeignKey('tags.tag_id'), primary_key=True)
 
 
 class articles(db.Model):
@@ -31,10 +37,7 @@ class tags(db.Model):
     __tablename__ = 'tags'
 
     tag_id = db.Column(db.Integer, primary_key=True)
-    article_id = db.Column(db.Integer, primary_key=True)
-    articles = db.relationship('articles', secondary=article_tag,
-                               backref=db.backref('tags', lazy='dynamic'),
-                               lazy='dynamic')
+    tag_name = db.Column(db.String(100), unique=True)
 
 
 comment_user = db.Table('c_u',
@@ -62,7 +65,7 @@ class comments(db.Model):
                                     lazy='dynamic')
 
 
-class users(UserMixin, db.Model):
+class users(db.Model):
     """用户表"""
     __tablename__ = 'users'
 
