@@ -66,6 +66,49 @@ def get_articles(article_title=None, category_id=None, article_author=None, star
     return articles_all
 
 
+@main.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        username = request.json['name']
+        password = request.json['password']
+        cur_user = users.query.filter_by(user_name=username).first()
+        if cur_user is None:
+            return jsonify({'result': 2})  # 用户名不存在
+        elif cur_user.user_key != password:
+            return jsonify({'result': 1})
+        else:
+            # login_user(cur_user)
+            cu = {
+                'user_id': cur_user.user_id,
+                'user_name': cur_user.user_name,
+                'user_password': cur_user.user_key,
+                'user_intro': cur_user.user_intro,
+                'user_credit': cur_user.user_credit,
+                'user_admin': cur_user.user_admin
+            }
+            return jsonify({'result': 0, 'user': cu})
+
+
+@main.route('/register', methods=['GET', 'POST'])
+def register():
+    if request.method == 'POST':
+        username = request.json['name']
+        password = request.json['password']
+        if users.query.filter_by(user_name=username).first():
+            return jsonify({'result': 1})
+        else:
+            last_user = users.query.order_by(desc(users.user_id)).first()
+            new_user = users(user_id=last_user.user_id + 1,
+                             user_name=username,
+                             user_key=password,
+                             user_intro='Nothing to be found here.',
+                             user_credit=0,
+                             user_admin=False)
+            db.session.add(new_user)
+            db.session.commit()
+            return jsonify({'result': 0})
+
+
 # 新闻主页
 @main.route('/index', methods=['GET', 'POST'])
 def index():
